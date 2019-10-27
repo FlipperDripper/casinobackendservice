@@ -1,68 +1,31 @@
-import {Injectable} from "@nestjs/common";
+import {HttpException, HttpStatus, Injectable} from "@nestjs/common";
 import {InjectRepository} from "@nestjs/typeorm";
 import {User} from "./users.entity";
-import {Repository} from "typeorm";
+import {getConnection, Repository, Transaction, TransactionManager, TransactionRepository} from "typeorm";
 import {UserDto} from "./dto/user.dto";
+import {BalanceOperation, BalanceOperationType} from "../finance/balanceOperaton.entity";
+import {UserRepository} from "./user.repository";
 
 @Injectable()
 export class UsersService {
-    constructor(
-        @InjectRepository(User)
-        private readonly userRepository: Repository<User>
-    ) {
+    @Transaction()
+    async findAll(@TransactionRepository(UserRepository) userRep?: UserRepository): Promise<User[]> {
+        return await userRep!.findAll()
     }
-    async findAll(): Promise<User[]> {
-        try {
-            return await this.userRepository.manager.transaction((async manager => {
-                return manager.find(User);
-            }));
-        } catch (e) {
-            console.error(e);
-            throw e;
-        }
+    @Transaction()
+    async findOne(login: string, @TransactionRepository(UserRepository) userRep?:UserRepository): Promise<User | undefined>{
+        return await userRep!.findByLogin(login)
     }
-    async findOne(login: string): Promise<User | undefined>{
-        try {
-            return await this.userRepository.manager.transaction((async manager => {
-                return manager.findOne(User, {login});
-            }));
-        } catch (e) {
-            console.error(e);
-            throw e;
-        }
+    @Transaction()
+    async findById(id: number, @TransactionRepository(UserRepository) userRep?:UserRepository): Promise<User | undefined>{
+        return await userRep!.findById(id);
     }
-    async findById(id: number): Promise<User | undefined>{
-        try{
-            return await this.userRepository.manager.transaction((async manager =>{
-                return manager.findOne(User, {id});
-            }))
-        }catch(e){
-            console.error(e);
-            throw e;
-        }
+    @Transaction()
+    async createUser(userDto: UserDto, @TransactionRepository(UserRepository) userRep?:UserRepository): Promise<User> {
+        return await userRep.createUser(userDto);
     }
-
-
-    async createUser(userDto: UserDto): Promise<User> {
-        try{
-            return await this.userRepository.manager.transaction((async manager=>{
-                const user = manager.create(User, userDto);
-                const savedUser = await manager.save(user);
-                delete savedUser.password;
-                return savedUser;
-            }))
-        }catch (e) {
-            console.error(e);
-            throw e;
-        }
-    }
-    async isLoginExist(login: string): Promise<boolean> {
-        try{
-            const user = await this.userRepository.manager.findOne(User, {login: login})
-            return Boolean(user);
-        }catch (e) {
-            console.error(e);
-            throw e;
-        }
+    @Transaction()
+    async isLoginExist(login: string, @TransactionRepository(UserRepository) userRep?:UserRepository ): Promise<boolean> {
+        return userRep!.isLoginExist(login);
     }
 }
