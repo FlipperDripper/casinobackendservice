@@ -11,7 +11,6 @@ export class UsersService {
         private readonly userRepository: Repository<User>
     ) {
     }
-
     async findAll(): Promise<User[]> {
         try {
             return await this.userRepository.manager.transaction((async manager => {
@@ -22,13 +21,35 @@ export class UsersService {
             throw e;
         }
     }
+    async findOne(login: string): Promise<User | undefined>{
+        try {
+            return await this.userRepository.manager.transaction((async manager => {
+                return manager.findOne(User, {login});
+            }));
+        } catch (e) {
+            console.error(e);
+            throw e;
+        }
+    }
+    async findById(id: number): Promise<User | undefined>{
+        try{
+            return await this.userRepository.manager.transaction((async manager =>{
+                return manager.findOne(User, {id});
+            }))
+        }catch(e){
+            console.error(e);
+            throw e;
+        }
+    }
 
 
     async createUser(userDto: UserDto): Promise<User> {
         try{
             return await this.userRepository.manager.transaction((async manager=>{
                 const user = manager.create(User, userDto);
-                return await manager.save(user);
+                const savedUser = await manager.save(user);
+                delete savedUser.password;
+                return savedUser;
             }))
         }catch (e) {
             console.error(e);

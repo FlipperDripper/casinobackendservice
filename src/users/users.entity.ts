@@ -1,5 +1,6 @@
-import {Entity, Column, PrimaryGeneratedColumn, Unique, CreateDateColumn} from 'typeorm';
-
+import {Entity, Column, PrimaryGeneratedColumn, Unique, CreateDateColumn, BeforeInsert, OneToMany} from 'typeorm';
+import * as bcrypt from 'bcryptjs'
+import {BalanceOperationEntity} from "../finance/balanceOperaton.entity";
 @Entity()
 export class User {
     @PrimaryGeneratedColumn()
@@ -22,4 +23,12 @@ export class User {
 
     @CreateDateColumn({name:'created_at'})
     createdAt: string
+
+    @OneToMany(type => BalanceOperationEntity, operation=>operation.user)
+    operations: BalanceOperationEntity[]
+
+    @BeforeInsert()
+    async hashPassword(){
+        this.password = await bcrypt.hash(this.password, 12);
+    }
 }

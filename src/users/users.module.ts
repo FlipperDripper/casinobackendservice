@@ -3,16 +3,14 @@ import {UsersController} from "./user.controller";
 import {UsersService} from "./users.service";
 import {TypeOrmModule} from "@nestjs/typeorm";
 import {User} from "./users.entity";
-import {APP_PIPE} from "@nestjs/core";
-import {SignUpValidator} from "../validators/SignUp";
+import {LocalAuthGuard} from "../auth/localAuth.guard";
+import {JwtAuthGuard} from "../auth/jwtAuth.guard";
+
 
 @Module({
     imports: [TypeOrmModule.forFeature([User])],
     controllers: [UsersController],
-    providers: [UsersService, {
-        provide: APP_PIPE,
-        useClass: SignUpValidator
-    }],
+    providers: [UsersService, LocalAuthGuard, JwtAuthGuard],
     exports: [UsersService]
 })
 export class UsersModule {}
