@@ -7,7 +7,7 @@ export enum BalanceOperationType {
 }
 
 @Entity()
-export class BalanceOperationEntity {
+export class BalanceOperation {
     @PrimaryGeneratedColumn()
     id: number;
 
