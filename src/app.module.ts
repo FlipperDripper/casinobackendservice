@@ -9,13 +9,15 @@ import {AuthService} from "./auth/auth.service";
 import {APP_GUARD} from "@nestjs/core";
 import {LocalAuthGuard} from "./auth/localAuth.guard";
 import { FinanceModule } from './finance/finance.module';
+import { CardsModule } from './cards/cards.module';
 
 @Module({
   imports: [
       UsersModule,
       TypeOrmModule.forRoot(config),
       AuthModule,
-      FinanceModule
+      FinanceModule,
+      CardsModule
   ],
   controllers: [AppController],
   providers: [AppService]

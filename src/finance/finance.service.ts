@@ -8,11 +8,7 @@ import {FinanceRepository} from "./finance.repository";
 
 @Injectable()
 export class FinanceService {
-    constructor(
-        @InjectRepository(BalanceOperation)
-        private readonly operationRepository: Repository<BalanceOperation>,
-    ) {
-    }
+    constructor() {}
 
     @Transaction()
     async deposit(userId: number, value: number,
