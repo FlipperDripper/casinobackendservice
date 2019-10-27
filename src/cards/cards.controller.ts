@@ -1,4 +1,5 @@
 import {
+    Body,
     ClassSerializerInterceptor,
     Controller,
     Get,
@@ -8,36 +9,68 @@ import {
     UseInterceptors
 } from "@nestjs/common";
 import {JwtAuthGuard} from "../auth/jwtAuth.guard";
+import {CardsService} from "./cards.service";
+import {ancestorWhere} from "tslint";
+import {PackDto} from "./dto/pack.dto";
+import {ItemDto} from "./dto/item.dto";
+import {CardDto} from "./dto/card.dto";
 
 @UseGuards(JwtAuthGuard)
 @UseInterceptors(ClassSerializerInterceptor)
 @Injectable()
 @Controller('cards')
-class CardsController {
+export class CardsController {
     constructor(
-        // private readonly cardService:
-    ) {}
+        private readonly cardService: CardsService
+    ) {
+    }
+
+    @Post('create-pack')
+    async createPack(@Body() packDto: PackDto){
+        return await this.cardService.createPack(packDto)
+    }
+
+    @Post('create-item')
+    async createItem(@Body() itemDto: ItemDto){
+        return await this.cardService.createItem(itemDto)
+    }
+
+    @Post('create-card')
+    async createCard(@Body() cardDto: CardDto){
+        return await this.cardService.createCard(cardDto)
+    }
 
     @Get('packs')
-    getPacks(){
-
+    async getPacks() {
+        return await this.cardService.getPacks();
     }
 
     @Get('pack/:id')
-    getPackById(@Param('id') id:number){}
+    async getPackById(@Param('id') id: number) {
+        return await this.cardService.getPackById(id);
+    }
 
     @Get('items')
-    getItems(){}
+    async getItems() {
+        return await this.cardService.getItems();
+    }
 
     @Get('item/:id')
-    getItemById(){}
+    async getItemById(@Param('id') id: number) {
+        return await this.cardService.getItemById(id)
+    }
 
     @Get('user/:id')
-    getCardsByUserId(@Param('id') id:number){}
+    async getCardsByUserId(@Param('id') id: number) {
+        return await this.cardService.getCardsByUserId(id);
+    }
 
     @Get('/:id')
-    getCardsById(@Param('id') id:number){}
+    async getCardById(@Param('id') id: number) {
+        return await this.cardService.getCardById(id);
+    }
 
     @Post('/transfer')
-    transfer(){}
+    transfer() {
+    }
 }
