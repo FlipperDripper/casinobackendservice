@@ -36,14 +36,12 @@ export class UsersController{
         if(isNaN(numId)) throw new HttpException('Id must be a number', HttpStatus.BAD_REQUEST);
         const user = await this.usersService.findById(numId)
         if(!user) throw new HttpException("User with same id not found", HttpStatus.NOT_FOUND);
-        delete user.password;
         return user;
     }
     @Get('/find/:login')
     async getByLogin(@Param('login') login: string):Promise<User>{
         const user = await this.usersService.findOne(login);
         if(!user) throw new HttpException("User with same login not found", HttpStatus.NOT_FOUND);
-        delete user.password;
         return user;
     }
 }

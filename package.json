@@ -14,7 +14,8 @@
     "start:prod": "node dist/main",
     "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js --config src/ormconfig.ts",
     "typeorm:migrate": "npm run typeorm migration:generate -- -n",
-    "typeorm:run": "npm run typeorm migration:run"
+    "typeorm:run": "npm run typeorm migration:run",
+    "typeorm:create": "npm run typeorm migration:create -- -n"
   },
   "dependencies": {
     "@nestjs/common": "^6.7.2",

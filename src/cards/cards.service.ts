@@ -79,15 +79,13 @@ export class CardsService {
                            @TransactionRepository(CardRepository) cardRep?: CardRepository): Promise<Card[]>{
         const user = await userRep.findById(id);
         if(!user) throw new HttpException("User with same id is not found", HttpStatus.BAD_REQUEST);
-        const queryBuilder = cardRep.createQueryBuilder('card')
-        return await queryBuilder
-            .where("card.user_id = :id", {id: user.id})
-            .getRawMany();
+        const card = await cardRep.find({userId: user.id});
+        if(!card) throw new HttpException("Card with same id is not found", HttpStatus.NOT_FOUND);
+        return card;
     }
     @Transaction()
     async getCardById(id: number, @TransactionRepository(CardRepository) cardRep?: CardRepository): Promise<Card>{
-        const queryBuilder = cardRep.createQueryBuilder('card')
-        const card = queryBuilder.where("card.id = :id", {id}).getRawOne();
+        const card = await cardRep.findOne(id);
         if(!card) throw new HttpException("Card with same id is not found", HttpStatus.NOT_FOUND);
         return card;
     }
