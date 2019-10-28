@@ -49,8 +49,14 @@ export class CardsService {
     }
 
     @Transaction()
-    async getPackById(id: number, @TransactionRepository(PackRepository) packRep?: PackRepository): Promise<Pack>{
-        const pack = await packRep.findOne(id);
+    async getPackById(id: number,
+                      @TransactionRepository(PackRepository) packRep?: PackRepository): Promise<Pack>{
+        const queryBuilder = packRep.createQueryBuilder('pack');
+        const pack = await queryBuilder
+            .select("pack")
+            .where("pack.id = :id",{id})
+            .leftJoinAndSelect("pack.items", "items")
+            .getOne();
         if(!pack) throw new HttpException("Pack with same id is not found", HttpStatus.NOT_FOUND);
         return pack;
     }
@@ -73,11 +79,15 @@ export class CardsService {
                            @TransactionRepository(CardRepository) cardRep?: CardRepository): Promise<Card[]>{
         const user = await userRep.findById(id);
         if(!user) throw new HttpException("User with same id is not found", HttpStatus.BAD_REQUEST);
-        return await cardRep.find({user: user});
+        const queryBuilder = cardRep.createQueryBuilder('card')
+        return await queryBuilder
+            .where("card.user_id = :id", {id: user.id})
+            .getRawMany();
     }
     @Transaction()
     async getCardById(id: number, @TransactionRepository(CardRepository) cardRep?: CardRepository): Promise<Card>{
-        const card = await cardRep.findOne(id);
+        const queryBuilder = cardRep.createQueryBuilder('card')
+        const card = queryBuilder.where("card.id = :id", {id}).getRawOne();
         if(!card) throw new HttpException("Card with same id is not found", HttpStatus.NOT_FOUND);
         return card;
     }

@@ -1,4 +1,4 @@
-import {Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn} from "typeorm";
+import {Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn} from "typeorm";
 import {Pack} from "./pack.entity";
 import {Card} from "./card.entity";
 
@@ -14,6 +14,7 @@ export class Item {
     value: number;
 
     @ManyToOne(type => Pack, pack => pack.items)
+    @JoinColumn({name:"pack_id"})
     pack: Pack;
 
     @OneToMany(type => Card, card => card.item)
