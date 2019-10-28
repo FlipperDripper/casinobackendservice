@@ -4,7 +4,7 @@ import {
     Controller,
     Get,
     Injectable,
-    Param, Post,
+    Param, Post, Req,
     UseGuards,
     UseInterceptors
 } from "@nestjs/common";
@@ -14,6 +14,8 @@ import {ancestorWhere} from "tslint";
 import {PackDto} from "./dto/pack.dto";
 import {ItemDto} from "./dto/item.dto";
 import {CardDto} from "./dto/card.dto";
+import {BuyCardDto} from "./dto/buyCard.dto";
+import {TransferDto} from "./dto/transfer.dto";
 
 @UseGuards(JwtAuthGuard)
 @UseInterceptors(ClassSerializerInterceptor)
@@ -71,6 +73,14 @@ export class CardsController {
     }
 
     @Post('/transfer')
-    transfer() {
+    async transfer(@Body() transferDto: TransferDto, @Req() req) {
+        const authData:{id: number, login: string} = req.authData;
+        return await this.cardService.transfer(authData.id, transferDto.userId, transferDto.cardId);
+    }
+
+    @Post('/buy-card')
+    async buyCard(@Body() buyCardDto: BuyCardDto, @Req() req){
+        const authData:{id: number, login: string} = req.authData;
+        return await this.cardService.buyCard(authData.id, buyCardDto.packId);
     }
 }

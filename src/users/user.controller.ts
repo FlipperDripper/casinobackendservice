@@ -5,7 +5,7 @@ import {
     HttpException,
     HttpStatus,
     Param,
-    Post,
+    Post, Req,
     UseGuards, UseInterceptors,
     UsePipes,
     ValidationPipe
@@ -31,7 +31,7 @@ export class UsersController{
         });
     }
     @Get('/:id')
-    async getOne(@Param('id') id): Promise<User>{
+    async getOne(@Param('id') id, @Req() req): Promise<User>{
         const numId = Number(id);
         if(isNaN(numId)) throw new HttpException('Id must be a number', HttpStatus.BAD_REQUEST);
         const user = await this.usersService.findById(numId)

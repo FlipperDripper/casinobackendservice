@@ -14,18 +14,7 @@ export class FinanceService {
     async deposit(userId: number, value: number,
                   @TransactionRepository(UserRepository) userRep?: UserRepository,
                   @TransactionRepository(FinanceRepository) financeRep?: FinanceRepository): Promise<BalanceOperation> {
-
-        const user = await userRep.findById(userId)
-        if (!user) throw new HttpException("User with same id not found", HttpStatus.BAD_REQUEST);
-        const currentBalance = Number(user.balance) + Number(value);
-        await userRep.changeBalance(userId, currentBalance);
-        const operation = await financeRep.createOperation(
-            {value, type: BalanceOperationType.deposit, userId}, user
-        );
-        operation.user.balance = currentBalance;
-        delete operation.user.password;
-        return operation;
-
+        return await financeRep.deposit(userId, value, userRep);
     }
 
     @Transaction()
@@ -33,14 +22,6 @@ export class FinanceService {
              @TransactionRepository(UserRepository) userRep?: UserRepository,
              @TransactionRepository(FinanceRepository) financeRep?: FinanceRepository): Promise<BalanceOperation>{
 
-        const user = await userRep.findById(userId);
-        if (!user) throw new HttpException("User with same id not found", HttpStatus.BAD_REQUEST);
-        const currentBalance = Number(user.balance) - Number(value);
-        if(currentBalance < 0) throw new HttpException("Not enough funds", HttpStatus.BAD_REQUEST);
-        await userRep.changeBalance(userId, currentBalance);
-        const operation =  await financeRep.createOperation({value, type: BalanceOperationType.withdraw, userId}, user)
-        operation.user.balance = currentBalance;
-        delete operation.user.password;
-        return operation;
+        return await financeRep.withdraw(userId, value, userRep);
     }
 }
