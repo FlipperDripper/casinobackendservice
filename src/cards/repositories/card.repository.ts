@@ -5,6 +5,7 @@ import {Pack} from "../pack.entity";
 import {Item} from "../item.entity";
 import {User} from "../../users/users.entity";
 import {HttpException, HttpStatus} from "@nestjs/common";
+import {WsException} from "@nestjs/websockets";
 
 @EntityRepository(Card)
 export class CardRepository extends Repository<Card> {
@@ -24,6 +25,21 @@ export class CardRepository extends Repository<Card> {
             throw new HttpException("You are not owner this card", HttpStatus.FORBIDDEN);
         card.user = receiver;
         return await this.save(card);
+    }
+
+    async transferCards(cardIds:number[], sender: User, receiver: User) {
+        const cards = await this.findByIds(cardIds);
+        if (cards.length == 0)
+            throw new HttpException("Cards with same id is not found", HttpStatus.BAD_REQUEST);
+        const someHasDifferentOwner = cards.some((card)=>card.userId != sender.id);
+        if (someHasDifferentOwner)
+            throw new HttpException("You are not owner this card", HttpStatus.FORBIDDEN);
+        return await Promise.all(cards.map(card=>{
+            card.user = receiver;
+            return this.save(card);
+        }))}
+    async getCards(cardsIds:number[]):Promise<Card[]>{
+        return await this.findByIds(cardsIds);
     }
 
 }

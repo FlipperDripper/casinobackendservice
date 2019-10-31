@@ -7,6 +7,7 @@ import config from "../config";
 import {AuthController} from "./auth.controller";
 import {LocalAuthGuard} from "./localAuth.guard";
 import {JwtAuthGuard} from "./jwtAuth.guard";
+import {JwtAuthSocketGuard} from "./JwtAuthSocket.guard";
 
 const JwtAuthModule = JwtModule.register({
     secret: config.jwtSecret,
@@ -29,9 +30,10 @@ const JwtAuthModule = JwtModule.register({
         AuthService,
         LocalAuthGuard,
         JwtAuthGuard,
+        JwtAuthSocketGuard
 
     ],
-    exports: [AuthService, LocalAuthGuard, JwtAuthGuard, JwtAuthModule]
+    exports: [AuthService, LocalAuthGuard, JwtAuthGuard, JwtAuthModule, JwtAuthSocketGuard]
 })
 export class AuthModule {
 }

@@ -10,6 +10,7 @@ import {APP_GUARD} from "@nestjs/core";
 import {LocalAuthGuard} from "./auth/localAuth.guard";
 import { FinanceModule } from './finance/finance.module';
 import { CardsModule } from './cards/cards.module';
+import { GameModule } from './game/game.module';
 
 @Module({
   imports: [
@@ -17,7 +18,8 @@ import { CardsModule } from './cards/cards.module';
       TypeOrmModule.forRoot(config),
       AuthModule,
       FinanceModule,
-      CardsModule
+      CardsModule,
+      GameModule
   ],
   controllers: [AppController],
   providers: [AppService]

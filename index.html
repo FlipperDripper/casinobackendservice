@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Casino</title>
+    <button onclick="window.testFun()">Click</button>
+</head>
+<body>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+<script>
+    var io = window.io.connect('localhost:3000',
+        {
+            query:{token:'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6Imtva29zc28iLCJzdWIiOjEsImlhdCI6MTU3MjIwMTk1OCwiZXhwIjoxNTcyODA2NzU4fQ.a__edNZZahn12edHYy_MBPqogGNVEENIAYxUwkuk7ZY'}
+        })
+    io.on('connect', () => {
+    })
+    window.testFun = function () {
+        io.emit('@room:create', null, (response) => {
+            console.log('res', response)
+        })
+    }
+    // io.emit('@room:create')
+</script>
+</body>
+</html>
