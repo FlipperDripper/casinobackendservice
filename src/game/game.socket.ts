@@ -82,9 +82,11 @@ export class GameSocket implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     @SubscribeMessage('@game:bet')
-    makeBet(message: {bet: number}, client){
+    makeBet(message: {bet: number}, client ){
         const {id, login} = client.authData;
-
+        Object.keys(client.rooms).map(room=>{
+            console.log(room)
+        })
     }
 
     @SubscribeMessage('@game:roll')

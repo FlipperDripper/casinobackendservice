@@ -6,6 +6,7 @@ import {AuthService} from "./auth.service";
 import {UserDto} from "../users/dto/user.dto";
 import {UsersService} from "../users/users.service";
 import {LoginDto} from "../users/dto/login.dto";
+import {User} from "../users/users.entity";
 
 @Controller('auth')
 export class AuthController{
@@ -18,14 +19,14 @@ export class AuthController{
 
     @Post('sign-up')
     @UsePipes(SignUpValidator, ValidationPipe)
-    async createUser(@Body() userDto: UserDto){
-        return this.usersService.createUser(userDto);
+    async createUser(@Body() userDto: UserDto): Promise<{}>{
+        return this.authService.createUser(userDto)
     }
 
     @Post('sign-in')
     @UseGuards(LocalAuthGuard)
     async login(@Body() loginDto: LoginDto){
         const user = await this.usersService.findOne(loginDto.login);
-        if(user) return await this.authService.login(user);
+        if(user) return this.authService.login(user);
     }
 }
