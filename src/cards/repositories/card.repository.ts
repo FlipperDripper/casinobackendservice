@@ -39,7 +39,11 @@ export class CardRepository extends Repository<Card> {
             return this.save(card);
         }))}
     async getCards(cardsIds:number[]):Promise<Card[]>{
-        return await this.findByIds(cardsIds);
+        const queryBuilder = this.createQueryBuilder('card')
+        return await queryBuilder.select('card')
+            .where('card.id in (:...cardsIds)', {cardsIds: cardsIds})
+            .leftJoinAndSelect('card.item', 'item')
+            .getMany();
     }
 
 }

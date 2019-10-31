@@ -19,7 +19,8 @@ import {GameStorage} from "./game.storage";
 @UseGuards(JwtAuthSocketGuard)
 @WebSocketGateway()
 export class GameSocket implements OnGatewayConnection, OnGatewayDisconnect {
-    @WebSocketServer() server:Server;
+    @WebSocketServer() server: Server;
+
     constructor(
         private readonly gameService: GameService,
         private readonly gameStorage: GameStorage
@@ -39,42 +40,51 @@ export class GameSocket implements OnGatewayConnection, OnGatewayDisconnect {
         })
     }
 
-    onGameStarted(roomId){
+    onGameStarted(roomId) {
         this.server.to(roomId.toString()).emit('@game:started')
     }
-    onGameEnded(roomId){
+
+    onGameEnded(roomId) {
         this.server.to(roomId.toString()).emit('@game:end')
     }
-    onGameCanceled(roomId){
+
+    onGameCanceled(roomId) {
         this.server.to(roomId.toString()).emit('@game:canceled')
     }
-    handleConnection(client:Socket): any {
+
+    handleConnection(client: Socket): any {
         console.log('connection')
     }
+
     handleDisconnect(client: Socket): any {
     }
+
     @SubscribeMessage('@room:create')
     createRoom(client, data: GameDto) {
-        if(!(data && data.maxCards && data.maxCardValue && data.maxSumValue && data.minCards && data.minCardValue && data.minSumValue))
+        if (!(data && data.maxCards && data.maxCardValue && data.maxSumValue && data.minCards && data.minCardValue && data.minSumValue))
             throw new WsException("Send all required arguments!");
         const roomId = this.gameService.createRoom({...data});
         return {status: 'ok', roomId}
     }
 
     @SubscribeMessage('@room:enter')
-    async enterToRoom(client, data: EnterToRoomDto){
-        const {id, login} = client.authData;
-        if(!data.roomId || !data.cards) throw new WsException("Send roomId and cards!");
-        await this.gameService.addUserToRoom(data.roomId, id, data.cards)
-        this.roomConnected(data.roomId, id);
-        client.join(data.roomId.toString());
-        return {status: 'ok'}
+    async enterToRoom(client, data: EnterToRoomDto) {
+        try {
+            const {id, login} = client.authData;
+            if (!data.roomId || !data.cards) throw new WsException("Send roomId and cards!");
+            await this.gameService.addUserToRoom(data.roomId, id, data.cards)
+            this.roomConnected(data.roomId, id);
+            client.join(data.roomId.toString());
+            return {status: 'ok'}
+        } catch (e) {
+            console.log(e)
+        }
     }
 
     @SubscribeMessage('@room:exit')
-    async roomExit(client, data:{roomId: number}){
+    async roomExit(client, data: { roomId: number }) {
         const {id, login} = client.authData;
-        if(!data.roomId) throw new WsException("Send roomId!");
+        if (!data.roomId) throw new WsException("Send roomId!");
         this.gameService.removeUserFromRoom(id, data.roomId);
         this.roomDisconnected(data.roomId, id);
         client.leave(data.roomId.toString());
@@ -82,23 +92,24 @@ export class GameSocket implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     @SubscribeMessage('@game:bet')
-    makeBet(message: {bet: number}, client ){
+    makeBet(message: { bet: number }, client) {
         const {id, login} = client.authData;
-        Object.keys(client.rooms).map(room=>{
+        Object.keys(client.rooms).map(room => {
             console.log(room)
         })
     }
 
     @SubscribeMessage('@game:roll')
-    rollDice(message, client){
+    rollDice(message, client) {
         const {id, login} = client.authData;
     }
 
-    roomConnected(roomId: number, userId: number){
-        this.server.emit('@room:connected', {status:'ok', roomId, userId});
+    roomConnected(roomId: number, userId: number) {
+        this.server.emit('@room:connected', {status: 'ok', roomId, userId});
     }
-    roomDisconnected(roomId: number, userId: number){
-        this.server.emit('@room:disconnected', {status:'ok', roomId, userId});
+
+    roomDisconnected(roomId: number, userId: number) {
+        this.server.emit('@room:disconnected', {status: 'ok', roomId, userId});
     }
 
 

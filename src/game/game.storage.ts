@@ -18,9 +18,12 @@ export class Room {
 @Injectable()
 export class GameStorage {
     private _storage: {
+        lastId: number,
+        rooms: { [roomId: number]: Room },
+    } = {
         lastId: 0,
-        rooms:{[roomId: number]: Room},
-    };
+        rooms: {}
+    }
     private gameStatusSwitchCallbacks: Array<(roomId: number, status: GameStatuses) => void> = [];
 
     onGameStatusChanged(callback: (roomId: number, status: GameStatuses) => void) {
@@ -43,9 +46,11 @@ export class GameStorage {
 
     createRoom(game: GameDto, users: User[] = [], cards: { [userId: number]: Card[] } = {}) {
         const store = this.storage;
-        const roomId = ++store.lastId;
+        store.lastId++;
+        const roomId = store.lastId;
+        console.log(store)
         let gameInstance;
-        if(game.gameType == GameType.roulette) gameInstance = new RouletteGame();
+        if (game.gameType == GameType.roulette) gameInstance = new RouletteGame();
         else gameInstance = new DiceGame(config.countOfCubes, config.maxCubeValue);
         store.rooms[roomId] = {game, users, cards, currentActiveUser: null, gameInstance};
         this.storage = store;

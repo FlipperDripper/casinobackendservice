@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Casino</title>
-    <button onclick="window.testFun()">Click</button>
+    <button onclick="window.createRoom()">Create room</button>
+    <button onclick="window.enterRoom()">Enter room</button>
 </head>
 <body>
 
@@ -11,16 +12,37 @@
 <script>
     var io = window.io.connect('localhost:3000',
         {
-            query:{token:'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6Imtva29zc28iLCJzdWIiOjEsImlhdCI6MTU3MjIwMTk1OCwiZXhwIjoxNTcyODA2NzU4fQ.a__edNZZahn12edHYy_MBPqogGNVEENIAYxUwkuk7ZY'}
+            query: {token: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6Imtva29zc28iLCJzdWIiOjEsImlhdCI6MTU3MjIwMTk1OCwiZXhwIjoxNTcyODA2NzU4fQ.a__edNZZahn12edHYy_MBPqogGNVEENIAYxUwkuk7ZY'}
         })
     io.on('connect', () => {
     })
-    window.testFun = function () {
-        io.emit('@room:create', null, (response) => {
-            console.log('res', response)
+    window.roomId = null;
+    window.createRoom = function () {
+        io.emit('@room:create', {
+            minCardValue: 1,
+            maxCardValue: 1000,
+            minSumValue: 1,
+            maxSumValue: 1000,
+            minCards: 1,
+            maxCards: 4,
+            gameType: 'roulette'
+        }, (response) => {
+            console.log('roomCreated', response)
+            window.roomId = response.roomId;
         })
     }
-    // io.emit('@room:create')
+    io.on("@game:started", ()=>console.log('@game:started'));
+    io.on("@game:ended", ()=>console.log('@game:ended'));
+    io.on("@game:canceled", ()=>console.log('@game:canceled'));
+    io.on("@room:connected", ()=>console.log("@room:connected"));
+    io.on("@room:disconnected", ()=>console.log('@room:disconnected'));
+    window.enterRoom = function () {
+        io.emit('@room:enter', {
+            roomId: window.roomId,
+            cards:[5]
+        })
+    }
+
 </script>
 </body>
 </html>

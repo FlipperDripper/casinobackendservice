@@ -17,34 +17,47 @@ export class GameService {
         private readonly gameStorage: GameStorage,
         private readonly gameScheduler: GameScheduler
     ) {
-        this.gameStorage.onGameStatusChanged((roomId, status)=>{
+        this.gameStorage.onGameStatusChanged((roomId, status) => {
 
         })
     }
-    onGameStarted(roomId){
+
+    onGameStarted(roomId) {
         const room = this.gameStorage.getRoom(roomId);
         const gameType = room.gameInstance instanceof RouletteGame ? RouletteGame : DiceGame;
-        if(gameType == RouletteGame){
+        if (gameType == RouletteGame) {
 
         }
-        if(gameType == DiceGame){}
+        if (gameType == DiceGame) {
+        }
     }
-    onGameCanceled(roomId){}
-    onGameEnded(roomId){}
+
+    onGameCanceled(roomId) {
+    }
+
+    onGameEnded(roomId) {
+    }
 
 
     createRoom(game: GameDto) {
         game.gameStatus = GameStatuses.waiting;
+        console.log('gameCanceled')
         const roomId = this.gameStorage.createRoom(game)
         this.gameScheduler.addTask(() => {
             const room = this.gameStorage.getRoom(roomId);
-            if (room.users.length < config.minUserInRoom) this.cancelGame(roomId)
-            else this.startGame(roomId)
+            if (room.users.length < config.minUserInRoom) {
+                this.cancelGame(roomId)
+                    .then(() => {
+                        console.log('canceled')
+                    })
+                    .catch(console.log)
+            } else this.startGame(roomId)
         }, config.waitingRoomTime)
+        return roomId;
     }
 
     @Transaction()
-    async addUserToRoom(roomId: number, userId:number, cardsForBet: number[],
+    async addUserToRoom(roomId: number, userId: number, cardsForBet: number[],
                         @TransactionRepository(CardRepository) cardRep?: CardRepository,
                         @TransactionRepository(UserRepository) userRep?: UserRepository) {
         try {
@@ -53,10 +66,10 @@ export class GameService {
             const financier = await userRep.findByLogin(config.financier.login);
             if (!financier) throw new WsException("Please, make sure that all deploy migrations applied");
             const cards = await cardRep.getCards(cardsForBet);
-            const room  = this.gameStorage.getRoom(roomId);
+            const room = this.gameStorage.getRoom(roomId);
             this.checkUsersCardBeforeAdding(room, cards);
             this.gameStorage.addUserToRoom(roomId, user, cards);
-            await cardRep.transferCards(cardsForBet,user, financier);
+            await cardRep.transferCards(cardsForBet, user, financier);
         } catch (e) {
             throw new WsException(e);
         }
@@ -68,21 +81,22 @@ export class GameService {
         if (room.users.length >= config.maxUsersInRoom) throw new WsException("The room is full");
         if (room.game.gameStatus != GameStatuses.waiting) throw new WsException("The game is not waiting for users")
     }
-    checkUsersCardBeforeAdding(room: Room, cardsForBet: Card[]){
+
+    checkUsersCardBeforeAdding(room: Room, cardsForBet: Card[]) {
         const game = room.game;
         const cardsCount = cardsForBet.length;
-        if(cardsCount < game.minCards) throw new WsException('Game need more cards');
-        if(cardsCount > game.minCards) throw new WsException('Game need less cards');
-        const cardsValueSum = cardsForBet.reduce((sum, card)=>{
+        if (cardsCount < game.minCards) throw new WsException('Game need more cards');
+        if (cardsCount > game.minCards) throw new WsException('Game need less cards');
+        const cardsValueSum = cardsForBet.reduce((sum, card) => {
             return sum + card.item.value;
         }, 0);
-        if(cardsValueSum > game.maxSumValue) throw new WsException('Cards sum more than limit of room');
-        if(cardsValueSum < game.minCardValue) throw new WsException('Cards sum less than limit of room');
+        if (cardsValueSum > game.maxSumValue) throw new WsException('Cards sum more than limit of room');
+        if (cardsValueSum < game.minCardValue) throw new WsException('Cards sum less than limit of room');
         // check some card more or less than game limitations
-        const moreOrLess = cardsForBet.some((card)=>{
+        const moreOrLess = cardsForBet.some((card) => {
             return card.item.value > game.maxCardValue || card.item.value < game.minCardValue;
         })
-        if(moreOrLess) throw new WsException('Some cards more or less than limit of room');
+        if (moreOrLess) throw new WsException('Some cards more or less than limit of room');
         return true;
     }
 
@@ -94,8 +108,21 @@ export class GameService {
         this.gameStorage.removeUserFromRoom(roomId, userId);
     }
 
-    cancelGame(roomId: number) {
-        this.gameStorage.cancelGame(roomId)
+    @Transaction()
+    async cancelGame(roomId: number,
+                     @TransactionRepository(UserRepository) userRep?: UserRepository,
+                     @TransactionRepository(CardRepository) cardRep?: CardRepository) {
+        const room = this.gameStorage.getRoom(roomId);
+        const roomCards = room.cards;
+        this.gameStorage.cancelGame(roomId);
+        return await Promise.all(Object.keys(roomCards).map(async userId => {
+            const cards: Card[] = roomCards[userId];
+            return Promise.all(cards.map(async card => {
+                card.user = await userRep.findById(Number(userId))
+                return await cardRep.save(card);
+            }))
+        }))
+
     }
 
 }
