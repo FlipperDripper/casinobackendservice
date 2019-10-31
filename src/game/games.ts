@@ -2,7 +2,7 @@ import config from "../config";
 
 export class RouletteGame {
     rouletteRange = config.rouletteRange;
-    bets: { [userId: number]: number }
+    bets: { [userId: number]: number } = {}
     result: number = null;
 
     makeBet(bet: number, userId: number) {

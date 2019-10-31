@@ -14,6 +14,7 @@ import {JwtAuthSocketGuard} from "../auth/JwtAuthSocket.guard";
 import {GameService} from "./game.service";
 import {EnterToRoomDto} from "./dto/enterToRoom.dto";
 import {GameStorage} from "./game.storage";
+import {log} from "util";
 
 
 @UseGuards(JwtAuthSocketGuard)
@@ -92,11 +93,14 @@ export class GameSocket implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     @SubscribeMessage('@game:bet')
-    makeBet(message: { bet: number }, client) {
-        const {id, login} = client.authData;
-        Object.keys(client.rooms).map(room => {
+    makeBet(client, message: { roomId: number, bet: number }) {
+        try {
+            const {id, login} = client.authData;
+            const room = this.gameService.makeBet(message.roomId, message.bet, id);
             console.log(room)
-        })
+        }catch (e) {
+            console.log(e)
+        }
     }
 
     @SubscribeMessage('@game:roll')

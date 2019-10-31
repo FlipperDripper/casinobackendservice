@@ -5,6 +5,7 @@
     <title>Casino</title>
     <button onclick="window.createRoom()">Create room</button>
     <button onclick="window.enterRoom()">Enter room</button>
+    <button onclick="window.makeBet()">Make bet</button>
 </head>
 <body>
 
@@ -39,7 +40,13 @@
     window.enterRoom = function () {
         io.emit('@room:enter', {
             roomId: window.roomId,
-            cards:[5]
+            cards:[11]
+        })
+    }
+    window.makeBet = function () {
+        io.emit('@game:bet', {
+            bet:10,
+            roomId: window.roomId
         })
     }
 

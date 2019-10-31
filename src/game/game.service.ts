@@ -18,7 +18,17 @@ export class GameService {
         private readonly gameScheduler: GameScheduler
     ) {
         this.gameStorage.onGameStatusChanged((roomId, status) => {
-
+            switch (status) {
+                case GameStatuses.waiting:
+                    break;
+                case GameStatuses.started:
+                    this.onGameStarted(roomId)
+                    break;
+                case GameStatuses.ended:
+                    break;
+                case GameStatuses.canceled:
+                    break;
+            }
         })
     }
 
@@ -26,7 +36,7 @@ export class GameService {
         const room = this.gameStorage.getRoom(roomId);
         const gameType = room.gameInstance instanceof RouletteGame ? RouletteGame : DiceGame;
         if (gameType == RouletteGame) {
-
+            const game = room.gameInstance as RouletteGame;
         }
         if (gameType == DiceGame) {
         }
@@ -122,7 +132,12 @@ export class GameService {
                 return await cardRep.save(card);
             }))
         }))
-
+    }
+    makeBet(roomId: number, bet: number, userId: number){
+        const room = this.gameStorage.getRoom(roomId);
+        const game = room.gameInstance as RouletteGame;
+        game.makeBet(bet, userId);
+        return room;
     }
 
 }
