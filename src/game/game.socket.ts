@@ -106,18 +106,19 @@ export class GameSocket implements OnGatewayConnection, OnGatewayDisconnect {
     @SubscribeMessage('@game:bet')
     makeBet(client, message: { roomId: number, bet: number }) {
         const {id, login} = client.authData;
-        const room = this.gameStorage.getRoom(roomId);
+        let room = this.gameStorage.getRoom(message.roomId);
         if (room.game.gameStatus != GameStatuses.started) {
             throw new WsException("Game is not active");
         }
-        const room = this.gameService.makeBet(message.roomId, message.bet, id);
+        room = this.gameService.makeBet(message.roomId, message.bet, id);
         this.userAction(id, room, {bet: message.bet});
     }
 
     @SubscribeMessage('@game:roll')
     rollDice(message: { roomId: number }, client) {
         const {id, login} = client.authData;
-        const cubes = this.gameService.rollDice(message.roomId);
+        const cubes = this.gameService.rollDice(message.roomId, id);
+        const room = this.gameStorage.getRoom(message.roomId);
         this.userAction(id, room, {cubes})
     }
 
@@ -130,7 +131,7 @@ export class GameSocket implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     userAction(userId: number, room: Room, data) {
-        this.server.to(room.id).emit('@game:user_action', {userId, data});
+        this.server.to(room.id.toString()).emit('@game:user_action', {userId, data});
     }
 
 

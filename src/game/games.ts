@@ -42,7 +42,7 @@ export class DiceGame {
         this.users.push(userId);
     }
     nextStep(){
-        const indexOfPreventUser = this.users.indexOf(thus.nextUser);
+        const indexOfPreventUser = this.users.indexOf(this.nextUser);
         if(this.users.length - 1 == indexOfPreventUser){
             return;
         }

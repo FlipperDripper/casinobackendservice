@@ -6,6 +6,7 @@ import {DiceGame, RouletteGame} from "./games";
 import config from "../config";
 
 export class Room {
+    id: number;
     game: GameDto;
     users: User[];
     currentActiveUser: User | null;
@@ -52,7 +53,7 @@ export class GameStorage {
         let gameInstance;
         if (game.gameType == GameType.roulette) gameInstance = new RouletteGame();
         else gameInstance = new DiceGame(config.countOfCubes, config.maxCubeValue);
-        store.rooms[roomId] = {game, users, cards, currentActiveUser: null, gameInstance};
+        store.rooms[roomId] = {game, users, cards, currentActiveUser: null, gameInstance, id:roomId};
         this.storage = store;
         return roomId;
     }
