@@ -46,7 +46,8 @@ export class GameSocket implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     onGameEnded(roomId) {
-        this.server.to(roomId.toString()).emit('@game:end')
+        const room = this.gameStorage.getRoom(roomId);
+        this.server.to(roomId.toString()).emit('@game:end', room.gameInstance)
     }
 
     onGameCanceled(roomId) {

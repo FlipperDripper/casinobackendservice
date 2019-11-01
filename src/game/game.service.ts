@@ -17,17 +17,18 @@ export class GameService {
         private readonly gameStorage: GameStorage,
         private readonly gameScheduler: GameScheduler
     ) {
-        this.gameStorage.onGameStatusChanged((roomId, status) => {
+        this.gameStorage.onGameStatusChanged(async (roomId, status) => {
             switch (status) {
                 case GameStatuses.waiting:
                     break;
                 case GameStatuses.started:
-                    this.onGameStarted(roomId)
+                    this.onGameStarted(roomId);
                     break;
                 case GameStatuses.ended:
-                    this.onGameCanceled(roomId)
+                    await this.onGameEnded(roomId);
                     break;
                 case GameStatuses.canceled:
+                    this.onGameCanceled(roomId);
                     break;
             }
         })
@@ -46,30 +47,30 @@ export class GameService {
     }
     @Transaction()
     async onGameEnded(roomId, @TransactionRepository(CardRepository) cardRep?: CardRepository) {
-        // const room = this.gameStorage.getRoom(roomId);
-        // const gameType = room.gameInstance instanceof RouletteGame ? RouletteGame : DiceGame;
-        // if (gameType == RouletteGame) {
-        //     const game = room.gameInstance as RouletteGame;
-        //     const winners = game.getWinners();
-        //     const allCards = Object.keys(room.cards).reduce((cards, userId)=>{
-        //         return [...cards, ...room.cards[userId]]
-        //     },[])
-        //
-        //     const cardsForOne = Math.floor(allCards.length/winners.length);
-        //     return await Promise.all(winners.map(userId=> {
-        //             const user = room.users.filter(user => user.id == userId)[0];
-        //             for(let i = 0; i<cardsForOne; i++){
-        //                 const card = allCards.pop() as Card;
-        //                 card.user = user;
-        //                 return cardRep.save(card);
-        //             }
-        //         }
-        //     ));
-        //
-        // }
-        // if (gameType == DiceGame) {
-        // }
-        //
+        const room = this.gameStorage.getRoom(roomId);
+        const gameType = room.gameInstance instanceof RouletteGame ? RouletteGame : DiceGame;
+        if (gameType == RouletteGame) {
+            const game = room.gameInstance as RouletteGame;
+            const winners = game.getWinners();
+            let allCards = Object.keys(room.cards).reduce((cards, userId)=>{
+                return [...cards, ...room.cards[userId]]
+            },[])
+            const cardsForOne = Math.floor(allCards.length/winners.length);
+            return await Promise.all(winners.map(async userId=> {
+                    let cardsForWinner = allCards.slice(0, cardsForOne);
+                    allCards.splice(0, cardsForOne);
+                    const user = room.users.filter(user => user.id == userId)[0];
+                    return Promise.all(cardsForWinner.map(async card=>{
+                        card.user = user;
+                        return await cardRep.save(card);
+                    }));
+                }
+            ));
+
+        }
+        if (gameType == DiceGame) {
+        }
+
     }
 
 
