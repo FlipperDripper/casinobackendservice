@@ -1,20 +1,19 @@
 import {
-    WebSocketGateway,
-    WebSocketServer,
-    SubscribeMessage,
     OnGatewayConnection,
     OnGatewayDisconnect,
-    MessageBody, WsException
+    SubscribeMessage,
+    WebSocketGateway,
+    WebSocketServer,
+    WsException
 } from '@nestjs/websockets';
 import {Server, Socket} from "socket.io";
-import {Req, UseGuards, UsePipes, ValidationPipe} from "@nestjs/common";
-import {JwtAuthGuard} from "../auth/jwtAuth.guard";
+import {UseGuards} from "@nestjs/common";
 import {GameDto, GameStatuses} from "./dto/game.dto";
 import {JwtAuthSocketGuard} from "../auth/JwtAuthSocket.guard";
 import {GameService} from "./game.service";
 import {EnterToRoomDto} from "./dto/enterToRoom.dto";
-import {GameStorage} from "./game.storage";
-import {log} from "util";
+import {GameStorage, Room} from "./game.storage";
+import {DiceGame, RouletteGame} from "./games";
 
 
 @UseGuards(JwtAuthSocketGuard)
@@ -77,9 +76,20 @@ export class GameSocket implements OnGatewayConnection, OnGatewayDisconnect {
             await this.gameService.addUserToRoom(data.roomId, id, data.cards)
             this.roomConnected(data.roomId, id);
             client.join(data.roomId.toString());
+            this.initUserInGame(data.roomId, id);
             return {status: 'ok'}
         } catch (e) {
             console.log(e)
+        }
+    }
+
+    initUserInGame(roomId: number, userId: number) {
+        const room = this.gameStorage.getRoom(roomId);
+        const game = room.gameInstance;
+        if (game instanceof RouletteGame) {
+        }
+        if (game instanceof DiceGame) {
+            game.addUser(userId);
         }
     }
 
@@ -95,18 +105,20 @@ export class GameSocket implements OnGatewayConnection, OnGatewayDisconnect {
 
     @SubscribeMessage('@game:bet')
     makeBet(client, message: { roomId: number, bet: number }) {
-        try {
-            const {id, login} = client.authData;
-            const room = this.gameService.makeBet(message.roomId, message.bet, id);
-            console.log(room)
-        }catch (e) {
-            console.log(e)
+        const {id, login} = client.authData;
+        const room = this.gameStorage.getRoom(roomId);
+        if (room.game.gameStatus != GameStatuses.started) {
+            throw new WsException("Game is not active");
         }
+        const room = this.gameService.makeBet(message.roomId, message.bet, id);
+        this.userAction(id, room, {bet: message.bet});
     }
 
     @SubscribeMessage('@game:roll')
-    rollDice(message, client) {
+    rollDice(message: { roomId: number }, client) {
         const {id, login} = client.authData;
+        const cubes = this.gameService.rollDice(message.roomId);
+        this.userAction(id, room, {cubes})
     }
 
     roomConnected(roomId: number, userId: number) {
@@ -115,6 +127,10 @@ export class GameSocket implements OnGatewayConnection, OnGatewayDisconnect {
 
     roomDisconnected(roomId: number, userId: number) {
         this.server.emit('@room:disconnected', {status: 'ok', roomId, userId});
+    }
+
+    userAction(userId: number, room: Room, data) {
+        this.server.to(room.id).emit('@game:user_action', {userId, data});
     }
 
 

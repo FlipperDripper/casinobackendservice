@@ -45,35 +45,27 @@ export class GameService {
 
     onGameCanceled(roomId) {
     }
+
     @Transaction()
     async onGameEnded(roomId, @TransactionRepository(CardRepository) cardRep?: CardRepository) {
         const room = this.gameStorage.getRoom(roomId);
-        const gameType = room.gameInstance instanceof RouletteGame ? RouletteGame : DiceGame;
-        if (gameType == RouletteGame) {
-            const game = room.gameInstance as RouletteGame;
-            const winners = game.getWinners();
-            let allCards = Object.keys(room.cards).reduce((cards, userId)=>{
-                return [...cards, ...room.cards[userId]]
-            },[])
-            const cardsForOne = Math.floor(allCards.length/winners.length);
-            return await Promise.all(winners.map(async userId=> {
-                    let cardsForWinner = allCards.slice(0, cardsForOne);
-                    allCards.splice(0, cardsForOne);
-                    const user = room.users.filter(user => user.id == userId)[0];
-                    return Promise.all(cardsForWinner.map(async card=>{
-                        card.user = user;
-                        return await cardRep.save(card);
-                    }));
-                }
-            ));
-
-        }
-        if (gameType == DiceGame) {
-        }
-
+        const game = room.gameInstance;
+        const winners = game.getWinners();
+        let allCards = Object.keys(room.cards).reduce((cards, userId) => {
+            return [...cards, ...room.cards[userId]]
+        }, [])
+        const cardsForOne = Math.floor(allCards.length / winners.length);
+        await Promise.all(winners.map(async userId => {
+                let cardsForWinner = allCards.slice(0, cardsForOne);
+                allCards.splice(0, cardsForOne);
+                const user = room.users.filter(user => user.id == userId)[0];
+                return Promise.all(cardsForWinner.map(async card => {
+                    card.user = user;
+                    return await cardRep.save(card);
+                }));
+            }
+        ));
     }
-
-
     createRoom(game: GameDto) {
         game.gameStatus = GameStatuses.waiting;
         console.log('gameCanceled')
@@ -158,17 +150,30 @@ export class GameService {
             }))
         }))
     }
-    makeBet(roomId: number, bet: number, userId: number){
+
+    makeBet(roomId: number, bet: number, userId: number) {
         const room = this.gameStorage.getRoom(roomId);
         const game = room.gameInstance as RouletteGame;
         game.makeBet(bet, userId);
-        const usersIds = room.users.map(user=>user.id);
+        const usersIds = room.users.map(user => user.id);
         const usersWithBet = Object.keys(game.bets);
-        if(usersIds.length == usersWithBet.length && (new Set(usersIds)).size == usersIds.length){
+        if (usersIds.length == usersWithBet.length && (new Set(usersIds)).size == usersIds.length) {
             game.getResult()
             this.gameStorage.endGame(roomId);
         }
         return room;
+    }
+
+    rollDice(roomId: number, userId: number) {
+        const room = this.gameStorage.getRoom(roomId);
+        const game = room.gameInstance as DiceGame;
+        const cubes = game.rollDice(userId);
+        const usersIds = room.users.map(user => user.id);
+        const usersWithResults = Object.keys(game.results);
+        if (usersIds.length == usersWithResults.length && (new Set(usersIds)).size == usersIds.length) {
+            this.gameStorage.endGame(roomId);
+        }
+        return cubes;
     }
 
 }
