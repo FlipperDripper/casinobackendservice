@@ -25,6 +25,7 @@ export class GameService {
                     this.onGameStarted(roomId)
                     break;
                 case GameStatuses.ended:
+                    this.onGameCanceled(roomId)
                     break;
                 case GameStatuses.canceled:
                     break;
@@ -36,7 +37,6 @@ export class GameService {
         const room = this.gameStorage.getRoom(roomId);
         const gameType = room.gameInstance instanceof RouletteGame ? RouletteGame : DiceGame;
         if (gameType == RouletteGame) {
-            const game = room.gameInstance as RouletteGame;
         }
         if (gameType == DiceGame) {
         }
@@ -44,8 +44,32 @@ export class GameService {
 
     onGameCanceled(roomId) {
     }
-
-    onGameEnded(roomId) {
+    @Transaction()
+    async onGameEnded(roomId, @TransactionRepository(CardRepository) cardRep?: CardRepository) {
+        // const room = this.gameStorage.getRoom(roomId);
+        // const gameType = room.gameInstance instanceof RouletteGame ? RouletteGame : DiceGame;
+        // if (gameType == RouletteGame) {
+        //     const game = room.gameInstance as RouletteGame;
+        //     const winners = game.getWinners();
+        //     const allCards = Object.keys(room.cards).reduce((cards, userId)=>{
+        //         return [...cards, ...room.cards[userId]]
+        //     },[])
+        //
+        //     const cardsForOne = Math.floor(allCards.length/winners.length);
+        //     return await Promise.all(winners.map(userId=> {
+        //             const user = room.users.filter(user => user.id == userId)[0];
+        //             for(let i = 0; i<cardsForOne; i++){
+        //                 const card = allCards.pop() as Card;
+        //                 card.user = user;
+        //                 return cardRep.save(card);
+        //             }
+        //         }
+        //     ));
+        //
+        // }
+        // if (gameType == DiceGame) {
+        // }
+        //
     }
 
 
@@ -137,6 +161,12 @@ export class GameService {
         const room = this.gameStorage.getRoom(roomId);
         const game = room.gameInstance as RouletteGame;
         game.makeBet(bet, userId);
+        const usersIds = room.users.map(user=>user.id);
+        const usersWithBet = Object.keys(game.bets);
+        if(usersIds.length == usersWithBet.length && (new Set(usersIds)).size == usersIds.length){
+            game.getResult()
+            this.gameStorage.endGame(roomId);
+        }
         return room;
     }
 
