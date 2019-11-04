@@ -125,12 +125,9 @@ export class CardsService {
             throw new HttpException("Receiver with same id is not found", HttpStatus.BAD_REQUEST);
         return await cardRep.transferCard(cardId, sender, receiver);
     }
-
-    async makeBet(userId, roomId){
-
+    @Transaction()
+    async isOwner(userId: number, cardsId:number[], @TransactionRepository(CardRepository) cardRep?: CardRepository){
+        const cards = await cardRep.findByIds(cardsId);
+        return !cards.some(card=>card.userId != userId)
     }
-    async rollDice(userId, roomId){
-
-    }
-
 }

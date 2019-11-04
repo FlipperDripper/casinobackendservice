@@ -17,6 +17,8 @@ export default {
         from:0,
         to: 39
     },
-    countOfCubes: 3,
-    maxCubeValue: 6,
+    diceWinRange:{
+        from: 0,
+        to: 3
+    }
 }

@@ -1,9 +1,5 @@
-import { ExtractJwt, Strategy } from 'passport-jwt';
-import { PassportStrategy } from '@nestjs/passport';
-import {CanActivate, ExecutionContext, HttpException, HttpStatus, Injectable} from '@nestjs/common';
-import config from "../config";
-import {AuthService} from "./auth.service";
-import {LoginDto} from "../users/dto/login.dto";
+import {CanActivate, ExecutionContext, Injectable} from '@nestjs/common';
+
 import {JwtService} from "@nestjs/jwt";
 
 @Injectable()

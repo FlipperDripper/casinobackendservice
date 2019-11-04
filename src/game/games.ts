@@ -1,80 +1,149 @@
 import config from "../config";
 
-export class RouletteGame {
-    rouletteRange = config.rouletteRange;
-    bets: { [userId: number]: number } = {};
-    result: number = null;
+export class Game {
+    players: number[] = [];
+    cardsBank: number[] = [];
+    private gameStartCallbacks: Array<() => void> = [];
+    private gameEndCallbacks: Array<() => void> = [];
 
-    makeBet(bet: number, userId: number) {
-        this.bets[userId] = bet;
+    addPlayer(playerId: number, cards: number[]) {
+        this.players.push(playerId);
+        this.cardsBank = [...this.cardsBank, ...cards];
     }
 
-    getResult() {
-        let result = Math.round(Math.random() * this.rouletteRange.to);
-        if (result < this.rouletteRange.from) result = this.rouletteRange.from;
-        this.result = result;
-        return result;
+    removePlayer(playerId: number) {
+        const playerIndex = this.players.indexOf(playerId);
+        if (playerIndex == -1) return;
+        this.players.splice(playerIndex, 1);
     }
-    getWinners():number[]{
-        if(this.result == null) return [];
-        return Object.keys(this.bets).map(userId=>{
-            if(this.bets[userId] == this.result) return Number(userId);
-        })
+
+    onStartGame(cb: () => void) {
+        this.gameStartCallbacks.push(cb);
     }
-    clear(){
-        this.bets = {};
-        this.result = null;
+
+    onEndGame(cb: () => void) {
+        this.gameEndCallbacks.push(cb);
+    }
+
+    protected emitStartGame() {
+        this.gameStartCallbacks.forEach(cb => cb());
+    }
+
+    protected emitEndGame() {
+        this.gameEndCallbacks.forEach(cb => cb());
+    }
+
+    startGame() {
+        this.emitStartGame();
+    }
+    endGame(){
+        this.emitEndGame();
     }
 }
 
-export class DiceGame {
-    countOfCubes: number;
-    maxCubeValue: number;
-    results: {[userId: number]: {cubes:number[]}} | null = null;
-    users: number[] = [];
-    nextUser: number = null;
+function diff<T>(arr1: T[], arr2: T[]) {
+    const result: T[] = [];
+    for (let el of arr1) {
+        if (arr2.indexOf(el) == -1) {
+            result.push(el);
+        }
+    }
+    return result;
+}
 
-    constructor(countOfCubes: number, maxCubeValue: number){
-        this.countOfCubes = countOfCubes;
-        this.maxCubeValue = maxCubeValue;
+function getRandomUInt(from: number, to: number): number {
+    if (from + 1 == to || from == to) return from;
+    const randomInt = Math.floor(Math.random() * (to - 1));
+    return randomInt < from ? from : randomInt;
+}
+
+export class RouletteGame extends Game {
+    winner: number = null;
+    startGame() {
+        super.startGame();
+        this.getWinner();
+        this.endGame();
     }
-    addUser(userId: number) {
-        this.users.push(userId);
+
+    getWinner(): number | null {
+        if (this.players.length == 0) return null;
+        const winnerIndex = getRandomUInt(0, this.players.length);
+        this.winner = this.players[winnerIndex];
+        return this.winner;
     }
-    nextStep(){
-        const indexOfPreventUser = this.users.indexOf(this.nextUser);
-        if(this.users.length - 1 == indexOfPreventUser){
-            return;
+}
+
+export class DiceGame extends Game {
+    currentPlayer: number | null = null;
+    playersMadeRoll: number[] = [];
+    nextUserCallbacks: Array<(userId: number | null) => void> = [];
+    gameInterval: any;
+
+    startGame() {
+        super.startGame();
+        this.nextPlayer();
+        this.setGameInterval();
+    }
+    endGame() {
+        super.endGame();
+        this.clearGameInterval();
+    }
+
+    setGameInterval() {
+        this.gameInterval = setInterval(this.nextPlayer.bind(this), config.maxStepTime);
+    }
+
+    clearGameInterval() {
+        clearInterval(this.gameInterval);
+    }
+
+    updateGameInterval() {
+        this.clearGameInterval();
+        this.setGameInterval();
+    }
+
+    onNextPlayer(cb: (userId: number | null) => void) {
+        this.nextUserCallbacks.push(cb)
+    }
+
+    emitNextPlayerCallback(userId: number | null) {
+        this.nextUserCallbacks.forEach(cb => cb(userId));
+    }
+
+    makeRoll(): number[] | null {
+        if (this.currentPlayer == null)return null;
+        if (this.cardsBank.length == 0) return null;
+        this.updateGameInterval();
+        return this.getRandomCards()
+    }
+
+    nextPlayer(): number | null {
+        const endGame = ()=>{
+            this.currentPlayer = null
+            this.endGame();
+            return null;
+        };
+        if(this.cardsBank.length == 0 || this.players.length == 0){
+            return endGame()
         }
-        this.nextUser = this.users[indexOfPreventUser+1];
-    }
-    rollDice(userId: number){
-        if(userId != this.nextUser) throw new Error('The turn of different user');
-        for(let i = 0; i < this.countOfCubes; i++){
-            const cubeValue = Math.floor(Math.random()*(this.maxCubeValue-1) + 1);
-            if(this.results[userId]){
-                this.results[userId].cubes.push(cubeValue);
-            }else{
-                this.results[userId].cubes = [cubeValue];
-            }
+        const playersWithoutRoll = diff<number>(this.players, this.playersMadeRoll);
+        if (playersWithoutRoll.length == 0) {
+            return endGame()
         }
-        return this.results[userId];
+        const nextUserIndex = getRandomUInt(0, playersWithoutRoll.length);
+        const nextUserId = playersWithoutRoll[nextUserIndex];
+
+        this.currentPlayer = nextUserId;
+        this.emitNextPlayerCallback(nextUserId);
+        return nextUserId;
     }
-    getWinners(): number[]{
-        if(!this.results) return [];
-        let maxCubeSum = 0;
-        let usersIdWithMaxCubeSum = [];
-        Object.keys(this.results).map(userId=>{
-            let sum = this.results[Number(userId)].cubes.reduce((acc, val)=>acc+val,0);
-            if(sum == maxCubeSum) usersIdWithMaxCubeSum.push(userId);
-            if(sum > maxCubeSum){
-                usersIdWithMaxCubeSum = [userId];
-            }
-            maxCubeSum = sum;
-        })
-        return  usersIdWithMaxCubeSum;
-    }
-    clear(){
-        this.results = {};
+
+    private getRandomCards(): number[] {
+        const countWonCards = getRandomUInt(config.diceWinRange.from, config.diceWinRange.to + 1);
+        if (this.cardsBank.length < countWonCards) {
+            return this.cardsBank
+        } else {
+            return this.cardsBank.splice(0, countWonCards)
+        }
     }
 }

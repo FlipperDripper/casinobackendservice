@@ -5,7 +5,7 @@
     <title>Casino</title>
     <button onclick="window.createRoom()">Create room</button>
     <button onclick="window.enterRoom()">Enter room</button>
-    <button onclick="window.makeBet()">Make bet</button>
+    <button onclick="window.rollDice()">Roll dice</button>
 </head>
 <body>
 
@@ -13,7 +13,7 @@
 <script>
     var io = window.io.connect('localhost:3000',
         {
-            query: {token: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6Imtva29zc28iLCJzdWIiOjEsImlhdCI6MTU3MjIwMTk1OCwiZXhwIjoxNTcyODA2NzU4fQ.a__edNZZahn12edHYy_MBPqogGNVEENIAYxUwkuk7ZY'}
+            query: {token: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6Imtva29zc28iLCJzdWIiOjEsImlhdCI6MTU3Mjg5MjMxNSwiZXhwIjoxNTczNDk3MTE1fQ.NZIi7EwHwaqToaPVTn7V9pt9XWyjFj0s2Nw-IttcjvY'}
         })
     io.on('connect', () => {
     })
@@ -26,7 +26,7 @@
             maxSumValue: 1000,
             minCards: 1,
             maxCards: 4,
-            gameType: 'roulette'
+            gameType: 'dice'
         }, (response) => {
             console.log('roomCreated', response)
             window.roomId = response.roomId;
@@ -40,13 +40,13 @@
     window.enterRoom = function () {
         io.emit('@room:enter', {
             roomId: window.roomId,
-            cards:[13]
+            cards:[9]
         })
     }
-    window.makeBet = function () {
-        io.emit('@game:bet', {
-            bet:10,
-            roomId: window.roomId
+    window.rollDice = function(){
+        io.emit('@game:user_action', {
+            roomId: window.roomId,
+            action: 'roll_dice'
         })
     }
 

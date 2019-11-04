@@ -1,7 +1,7 @@
 import {Injectable} from "@nestjs/common";
 import {Transaction, TransactionRepository} from "typeorm";
 import {UserRepository} from "../users/user.repository";
-import {GameStorage, Room} from "./game.storage";
+import {GameObserver, GameStorage, Room} from "./game.storage";
 import {GameDto, GameStatuses} from "./dto/game.dto";
 import {CardRepository} from "../cards/repositories/card.repository";
 import {WsException} from "@nestjs/websockets";
@@ -9,26 +9,29 @@ import config from "../config";
 import {GameScheduler} from "./game.scheduler";
 import {Card} from "../cards/card.entity";
 import {DiceGame, RouletteGame} from "./games";
+import {UserActionType} from "./game.socket";
 
 
 @Injectable()
-export class GameService {
+export class GameService extends GameObserver{
     constructor(
         private readonly gameStorage: GameStorage,
         private readonly gameScheduler: GameScheduler
     ) {
+        super();
         this.gameStorage.onGameStatusChanged(async (roomId, status) => {
             switch (status) {
-                case GameStatuses.waiting:
-                    break;
                 case GameStatuses.started:
                     this.onGameStarted(roomId);
+                    this.emitGameStatusChanged(roomId, status);
                     break;
                 case GameStatuses.ended:
-                    await this.onGameEnded(roomId);
+                    const result = await this.onGameEnded(roomId);
+                    this.emitGameStatusChanged(roomId, status, result);
                     break;
                 case GameStatuses.canceled:
-                    this.onGameCanceled(roomId);
+                    await this.onGameCanceled(roomId);
+                    this.emitGameStatusChanged(roomId, status);
                     break;
             }
         })
@@ -43,43 +46,45 @@ export class GameService {
         }
     }
 
-    onGameCanceled(roomId) {
+    async onGameCanceled(roomId) {
+        await this.cancelGame(roomId)
     }
 
     @Transaction()
-    async onGameEnded(roomId, @TransactionRepository(CardRepository) cardRep?: CardRepository) {
+    async onGameEnded(roomId,
+                      @TransactionRepository(CardRepository) cardRep?: CardRepository,
+                      @TransactionRepository(UserRepository) userRep?: UserRepository
+    ) {
         const room = this.gameStorage.getRoom(roomId);
         const game = room.gameInstance;
-        const winners = game.getWinners();
-        let allCards = Object.keys(room.cards).reduce((cards, userId) => {
-            return [...cards, ...room.cards[userId]]
-        }, [])
-        const cardsForOne = Math.floor(allCards.length / winners.length);
-        await Promise.all(winners.map(async userId => {
-                let cardsForWinner = allCards.slice(0, cardsForOne);
-                allCards.splice(0, cardsForOne);
-                const user = room.users.filter(user => user.id == userId)[0];
-                return Promise.all(cardsForWinner.map(async card => {
-                    card.user = user;
-                    return await cardRep.save(card);
-                }));
+        if(game instanceof DiceGame){
+            return;
+        }
+        if(game instanceof RouletteGame){
+            const winnerId = game.winner;
+            const allCards = Object.keys(room.cards).reduce((cards, userId) => {
+                return [...cards, ...room.cards[userId]]
+            }, []);
+            const winner = await userRep.findById(winnerId);
+            const cardsForWinner = await Promise.all(allCards.map((card: Card)=>{
+                card.user = winner;
+                return cardRep.save(card)
+            }))
+            return {
+                winner: winnerId,
+                cards: cardsForWinner
             }
-        ));
+        }
     }
     createRoom(game: GameDto) {
-        game.gameStatus = GameStatuses.waiting;
-        console.log('gameCanceled')
         const roomId = this.gameStorage.createRoom(game)
         this.gameScheduler.addTask(() => {
             const room = this.gameStorage.getRoom(roomId);
-            if (room.users.length < config.minUserInRoom) {
-                this.cancelGame(roomId)
-                    .then(() => {
-                        console.log('canceled')
-                    })
-                    .catch(console.log)
-            } else this.startGame(roomId)
+            if(room.game.gameStatus == GameStatuses.started) return;
+            if (room.users.length < config.minUserInRoom) this.gameStorage.cancelGame(roomId);
+            else this.startGame(roomId)
         }, config.waitingRoomTime)
+        this.emitGameStatusChanged(roomId, GameStatuses.waiting);
         return roomId;
     }
 
@@ -87,7 +92,6 @@ export class GameService {
     async addUserToRoom(roomId: number, userId: number, cardsForBet: number[],
                         @TransactionRepository(CardRepository) cardRep?: CardRepository,
                         @TransactionRepository(UserRepository) userRep?: UserRepository) {
-        try {
             this.canAddUserToRoom(roomId);
             const user = await userRep.findById(userId);
             const financier = await userRep.findByLogin(config.financier.login);
@@ -97,9 +101,7 @@ export class GameService {
             this.checkUsersCardBeforeAdding(room, cards);
             this.gameStorage.addUserToRoom(roomId, user, cards);
             await cardRep.transferCards(cardsForBet, user, financier);
-        } catch (e) {
-            throw new WsException(e);
-        }
+            if(room.users.length == config.maxUsersInRoom) this.startGame(roomId);
     }
 
     canAddUserToRoom(roomId: number) {
@@ -150,30 +152,31 @@ export class GameService {
             }))
         }))
     }
-
-    makeBet(roomId: number, bet: number, userId: number) {
-        const room = this.gameStorage.getRoom(roomId);
-        const game = room.gameInstance as RouletteGame;
-        game.makeBet(bet, userId);
-        const usersIds = room.users.map(user => user.id);
-        const usersWithBet = Object.keys(game.bets);
-        if (usersIds.length == usersWithBet.length && (new Set(usersIds)).size == usersIds.length) {
-            game.getResult()
-            this.gameStorage.endGame(roomId);
-        }
-        return room;
-    }
-
-    rollDice(roomId: number, userId: number) {
+    @Transaction()
+    async rollDice(roomId: number, userId: number,
+                   @TransactionRepository(CardRepository) cardRep?: CardRepository,
+                   @TransactionRepository(UserRepository) userRep?: UserRepository
+    ) {
         const room = this.gameStorage.getRoom(roomId);
         const game = room.gameInstance as DiceGame;
-        const cubes = game.rollDice(userId);
-        const usersIds = room.users.map(user => user.id);
-        const usersWithResults = Object.keys(game.results);
-        if (usersIds.length == usersWithResults.length && (new Set(usersIds)).size == usersIds.length) {
-            this.gameStorage.endGame(roomId);
+        if(room.game.gameStatus != GameStatuses.started) throw new WsException('Game is not active');
+        if(game.currentPlayer != userId) throw new WsException('Not your turn');
+        const result = game.makeRoll();
+        const user = await userRep.findById(userId);
+        let cards = [];
+        if(result.length != 0){
+            const financier = await userRep.findByLogin(config.financier.login);
+            cards =  await cardRep.transferCards(result, financier, user);
         }
-        return cubes;
+        game.nextPlayer();
+        return cards;
+    }
+
+    async userAction(userId: number, roomId: number, actionType: UserActionType, payload?: any){
+        switch (actionType) {
+            case UserActionType.rollDice:
+                return await this.rollDice(roomId, userId);
+        }
     }
 
 }
