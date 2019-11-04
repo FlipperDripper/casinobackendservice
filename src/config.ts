@@ -10,7 +10,7 @@ export default {
         password: 'password'
     },
     maxUsersInRoom: 5,
-    minUserInRoom: 1,
+    minUserInRoom: 2,
     waitingRoomTime: 1000 * 60 * 0.1,
     maxStepTime: 1000 * 60, // время ожидания хода
     rouletteRange:{

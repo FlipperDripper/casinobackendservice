@@ -143,7 +143,6 @@ export class GameService extends GameObserver{
                      @TransactionRepository(CardRepository) cardRep?: CardRepository) {
         const room = this.gameStorage.getRoom(roomId);
         const roomCards = room.cards;
-        this.gameStorage.cancelGame(roomId);
         return await Promise.all(Object.keys(roomCards).map(async userId => {
             const cards: Card[] = roomCards[userId];
             return Promise.all(cards.map(async card => {
