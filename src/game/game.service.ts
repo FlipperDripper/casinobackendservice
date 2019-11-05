@@ -72,7 +72,7 @@ export class GameService extends GameObserver{
             }))
             return {
                 winner: winnerId,
-                cards: cardsForWinner
+                cards: cardsForWinner.map(card=>card.id)
             }
         }
     }
@@ -162,13 +162,13 @@ export class GameService extends GameObserver{
         if(game.currentPlayer != userId) throw new WsException('Not your turn');
         const result = game.makeRoll();
         const user = await userRep.findById(userId);
-        let cards = [];
+        let cards: Card[] = [];
         if(result.length != 0){
             const financier = await userRep.findByLogin(config.financier.login);
             cards =  await cardRep.transferCards(result, financier, user);
         }
         game.nextPlayer();
-        return cards;
+        return {cards:cards.map(card=>card.id)};
     }
 
     async userAction(userId: number, roomId: number, actionType: UserActionType, payload?: any){
