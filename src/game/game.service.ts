@@ -80,7 +80,7 @@ export class GameService extends GameObserver{
         const roomId = this.gameStorage.createRoom(game)
         this.gameScheduler.addTask(() => {
             const room = this.gameStorage.getRoom(roomId);
-            if(room.game.gameStatus == GameStatuses.started) return;
+            if(room.game.gameStatus != GameStatuses.waiting ) return;
             if (room.users.length < config.minUserInRoom) this.gameStorage.cancelGame(roomId);
             else this.startGame(roomId)
         }, config.waitingRoomTime)
